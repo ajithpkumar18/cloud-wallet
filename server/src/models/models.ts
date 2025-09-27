@@ -1,6 +1,6 @@
 import mongoose, { connect, mongo } from "mongoose";
 
-mongoose.connect("https://localhost:27017");
+mongoose.connect("mongodb://localhost:27017/walletdb");
 
 const userSchema = new mongoose.Schema({
 	username: String,
