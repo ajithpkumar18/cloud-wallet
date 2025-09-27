@@ -1,35 +1,86 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import "./App.css";
+import {
+	Transaction,
+	Connection,
+	PublicKey,
+	SystemProgram,
+	LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+import axios from "axios";
 
 function App() {
-  const [count, setCount] = useState(0)
+	const [data, setData] = useState({ amount: 0, address: "" });
+	const [con, setCon] = useState<Connection | null>(null);
+	const url = import.meta.env.VITE_RPC;
+	useEffect(() => {
+		const connection = new Connection(url, "confirmed");
+		setCon(connection);
+		console.log(url);
+	}, []);
+	const HandleInput = (e: ChangeEvent<HTMLInputElement>) => {
+		setData((d) => ({ ...d, [e.target.name]: e.target.value }));
+		console.log(data);
+	};
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+	const handleSubmit = async (e: FormEvent<HTMLButtonElement>) => {
+		e.preventDefault();
+
+		// console.log(data);
+		const instruction = SystemProgram.transfer({
+			fromPubkey: new PublicKey(
+				"E4iDMUxfmNZUMNVuLwGQLumiCDaETEc5ug3ztAfFFCRs"
+			),
+			toPubkey: new PublicKey(
+				"HPmRdYv4Ap1aFVG1tgC4qoE9PcpaVibRSUSspxHeyMST"
+			),
+
+			lamports: 0.001 * LAMPORTS_PER_SOL,
+		});
+		const block = await con?.getLatestBlockhash("processed");
+		const blockhash = block?.blockhash;
+		const txn = new Transaction().add(instruction);
+		txn.recentBlockhash = blockhash;
+		txn.feePayer = new PublicKey(
+			"E4iDMUxfmNZUMNVuLwGQLumiCDaETEc5ug3ztAfFFCRs"
+		);
+
+		// convert transaction to a bunch of bytes
+		const serializedTxn = txn.serialize({
+			requireAllSignatures: false,
+			verifySignatures: false,
+		});
+
+		console.log(serializedTxn);
+		axios.post("/api/v1/txn/sign", {
+			message: serializedTxn,
+			retry: false,
+		});
+
+		console.log("submitted");
+	};
+
+	return (
+		<>
+			<div>
+				<input
+					type='number'
+					placeholder='Amount'
+					name='amount'
+					onChange={HandleInput}
+				/>
+				<input
+					type='text'
+					placeholder='Address'
+					name='address'
+					onChange={HandleInput}
+				/>
+				<button type='button' onClick={handleSubmit}>
+					Send
+				</button>
+			</div>
+		</>
+	);
 }
 
-export default App
+export default App;
